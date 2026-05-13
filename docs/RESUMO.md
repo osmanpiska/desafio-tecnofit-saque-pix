@@ -73,7 +73,7 @@ docker-compose exec app sh
 # Rodar comandos Hyperf
 docker-compose exec app php bin/hyperf.php list
 
-# Gerar Swagger
+# Regenerar Swagger manualmente (também é gerado ao reiniciar a aplicação)
 docker-compose exec app php bin/hyperf.php gen:swagger
 
 # Testes
@@ -112,7 +112,7 @@ resources/views/emails/
 
 ✅ **Exception Handling**: Handlers para 404, 422, 500 com JSON estruturado  
 ✅ **Email**: Envio de emails com templates Blade via Mailpit  
-✅ **Swagger**: Documentação automática da API  
+✅ **Swagger**: Documentação estática gerada ao iniciar a aplicação  
 ✅ **Health Check**: Endpoint para monitoramento  
 ✅ **Enums**: PixKeyType (EMAIL), WithdrawMethod (PIX)  
 ✅ **DTOs**: WithdrawEmailDTO tipado  

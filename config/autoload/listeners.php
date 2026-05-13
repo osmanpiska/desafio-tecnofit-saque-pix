@@ -20,5 +20,6 @@ use Hyperf\ExceptionHandler\Listener\ErrorExceptionHandler;
  * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
  */
 return [
+    App\Listener\GenerateSwaggerListener::class,
     ErrorExceptionHandler::class,
 ];

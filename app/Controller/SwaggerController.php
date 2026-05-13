@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use duncan3dc\Laravel\BladeInstance;
-use Hyperf\Codec\Json;
 use Hyperf\HttpServer\Annotation\Controller;
 use Hyperf\HttpServer\Annotation\GetMapping;
-use OpenApi\Generator;
+use Psr\Http\Message\ResponseInterface;
 
 #[Controller]
 class SwaggerController extends AbstractController
@@ -24,22 +23,37 @@ class SwaggerController extends AbstractController
     }
 
     #[GetMapping(path: '/swagger')]
-    public function index()
+    public function index(): ResponseInterface
     {
-        $paths = [BASE_PATH . '/app'];
-        $openapi = Generator::scan($paths);
+        $file = BASE_PATH . '/storage/swagger/http.json';
 
-        return $this->response->json(Json::decode($openapi->toJson()));
+        if (! file_exists($file)) {
+            return $this->response->json([
+                'openapi' => '3.0.0',
+                'info' => [
+                    'title' => 'Saque PIX API',
+                    'version' => '1.0.0',
+                    'description' => 'Swagger documentation was not generated yet.',
+                ],
+                'paths' => [],
+            ]);
+        }
+
+        return $this->response
+            ->raw(file_get_contents($file))
+            ->withHeader('Content-Type', 'application/json; charset=utf-8');
     }
 
     #[GetMapping(path: '/swagger/ui')]
-    public function ui()
+    public function ui(): ResponseInterface
     {
         $html = $this->blade->render('swagger.ui', [
             'title' => 'Saque PIX API - Swagger UI',
             'jsonUrl' => '/swagger',
         ]);
 
-        return $this->response->html($html);
+        return $this->response
+            ->raw($html)
+            ->withHeader('Content-Type', 'text/html; charset=utf-8');
     }
 }

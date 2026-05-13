@@ -76,7 +76,7 @@ docker-compose logs -f app
 # Acessar container
 docker-compose exec app sh
 
-# Gerar Swagger
+# Regenerar Swagger manualmente (também é gerado ao reiniciar a aplicação)
 docker-compose exec app php bin/hyperf.php gen:swagger
 ```
 
