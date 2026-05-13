@@ -31,7 +31,7 @@ O foco principal da solução é garantir consistência financeira mesmo sob con
 
 ## Stack
 
-- PHP 8.1+ com Hyperf 3.1
+- PHP 8.4+ com Hyperf 3.1
 - Swoole
 - MySQL 8
 - Mailpit
