@@ -348,11 +348,13 @@ Exemplo de log da cron:
 
 ```text
 app/
+├── Constants/           # Constantes e códigos de erro
 ├── Controller/          # Endpoints HTTP
 ├── DTO/                 # Objetos de transferência de dados
 ├── Enum/                # Enums do domínio
 ├── Exception/Handler/   # Tratamento global de erros
 ├── Job/                 # Cron de saques agendados
+├── Listener/            # Listeners de eventos do Hyperf
 ├── Model/               # Models do banco
 ├── Processor/           # Débito, falha e lock
 ├── Repositories/        # Acesso a dados
@@ -365,12 +367,9 @@ app/
 
 ## Documentação Complementar
 
-- [Desafio Tecnofit](docs/01-desafio_tecnofit.md)
-- [Instalação](docs/02-instalacao.md)
-- [Estrutura do Projeto](docs/03-estrutura.md)
-- [Comandos Úteis](docs/04-comandos.md)
-- [Configurações](docs/05-configuracoes.md)
-- [Deploy](docs/06-deploy.md)
+- [Desafio Tecnofit](docs/01-desafio_tecnofit.md) - Requisitos originais do case
+- [README Docs](docs/README.md) - Documentação adicional do projeto
+- [Resumo](docs/RESUMO.md) - Resumo técnico da implementação
 
 ---
 
