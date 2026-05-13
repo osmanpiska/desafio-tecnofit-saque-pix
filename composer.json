@@ -13,6 +13,8 @@
     "license": "Apache-2.0",
     "require": {
         "php": ">=8.1",
+        "duncan3dc/blade": "*",
+        "friendsofhyperf/mail": "*",
         "hyperf/cache": "~3.1.0",
         "hyperf/command": "~3.1.0",
         "hyperf/config": "~3.1.0",
@@ -28,6 +30,7 @@
         "hyperf/memory": "~3.1.0",
         "hyperf/process": "~3.1.0",
         "hyperf/validation": "~3.1.0",
+        "hyperf/view-engine": "~3.1",
         "ramsey/uuid": "^4.9"
     },
     "require-dev": {

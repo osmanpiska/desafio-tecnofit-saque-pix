@@ -243,6 +243,89 @@ return [
 
 ---
 
+## Configuracao de Email
+
+### Pacotes Necessarios
+
+```bash
+composer require friendsofhyperf/mail duncan3dc/blade
+```
+
+### Configuracao SMTP (config/autoload/mail.php)
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use function Hyperf\Support\env;
+
+return [
+    'default' => 'smtp',
+    'mailers' => [
+        'smtp' => [
+            'transport' => 'smtp',
+            'scheme' => 'smtp',
+            'host' => env('MAIL_HOST', 'mailpit'),
+            'port' => (int) env('MAIL_PORT', 1025),
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'timeout' => null,
+        ],
+    ],
+    'from' => [
+        'address' => env('MAIL_FROM_ADDRESS', 'noreply@saque-pix.local'),
+        'name' => env('MAIL_FROM_NAME', 'SaquePIX'),
+    ],
+];
+```
+
+### Configuracao Blade (config/autoload/view.php)
+
+```php
+<?php
+
+declare(strict_types=1);
+
+return [
+    'engine' => 'blade',
+    'config' => [
+        'view_path' => BASE_PATH . '/resources/views',
+        'cache_path' => BASE_PATH . '/runtime/views',
+    ],
+];
+```
+
+### Variaveis de Ambiente (.env)
+
+```env
+# Email - Mailpit (servico de teste)
+MAIL_DRIVER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_ENCRYPTION=
+MAIL_FROM_ADDRESS=noreply@saque-pix.local
+MAIL_FROM_NAME=SaquePIX
+MAILPIT_WEB_PORT=8025
+MAILPIT_SMTP_PORT=1025
+```
+
+### Testar Email
+
+```bash
+# Enviar email de teste
+curl -X POST http://localhost:9502/health/test-email \
+  -H "Content-Type: application/json" \
+  -d '{"email": "teste@exemplo.com"}'
+
+# Verificar email no Mailpit
+open http://localhost:8025
+```
+
+---
+
 ## Timezone
 
 Configurado em `config/config.php`:
