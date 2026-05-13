@@ -11,8 +11,11 @@ use Hyperf\HttpServer\Annotation\Controller;
 use Hyperf\HttpServer\Annotation\GetMapping;
 use Hyperf\HttpServer\Annotation\PostMapping;
 use Hyperf\Validation\ValidationException;
+use OpenApi\Attributes as OA;
 
 #[Controller]
+#[OA\Info(title: 'Saque PIX API', version: '1.0.0', description: 'API para saques via PIX com notificações por email')]
+#[OA\Server(url: 'http://localhost:9502', description: 'Servidor local')]
 class HealthController extends AbstractController
 {
     public function __construct(
@@ -20,6 +23,28 @@ class HealthController extends AbstractController
     ) {
     }
     #[GetMapping(path: '/health')]
+    #[OA\Get(
+        path: '/health',
+        summary: 'Health check',
+        description: 'Verifica status da API e conexão com banco de dados',
+        tags: ['Health'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'API funcionando normalmente',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'status', type: 'string', example: 'ok'),
+                        new OA\Property(property: 'timestamp', type: 'string', example: '2026-05-13 15:30:00'),
+                        new OA\Property(property: 'database', properties: [
+                            new OA\Property(property: 'status', type: 'string', example: 'ok'),
+                            new OA\Property(property: 'message', type: 'string', example: 'Connected'),
+                        ]),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function health()
     {
         $dbStatus = 'ok';
@@ -43,6 +68,25 @@ class HealthController extends AbstractController
     }
 
     #[GetMapping(path: '/health/error')]
+    #[OA\Get(
+        path: '/health/error',
+        summary: 'Testar erro 500',
+        description: 'Força um erro de servidor para testar o handler de exceções',
+        tags: ['Health'],
+        responses: [
+            new OA\Response(
+                response: 500,
+                description: 'Erro de servidor',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 500),
+                        new OA\Property(property: 'message', type: 'string', example: 'Server Error'),
+                        new OA\Property(property: 'errors', type: 'object'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function forceError()
     {
         // Força uma divisão por zero para testar logging de erros
@@ -52,6 +96,25 @@ class HealthController extends AbstractController
     }
 
     #[GetMapping(path: '/health/validation-error')]
+    #[OA\Get(
+        path: '/health/validation-error',
+        summary: 'Testar erro 422',
+        description: 'Força um erro de validação para testar o handler de validação',
+        tags: ['Health'],
+        responses: [
+            new OA\Response(
+                response: 422,
+                description: 'Erro de validação',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 422),
+                        new OA\Property(property: 'message', type: 'string', example: 'Validation Error'),
+                        new OA\Property(property: 'errors', type: 'object', example: ['amount' => ['Amount must be greater than 0']]),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function forceValidationError()
     {
         // Simula erro de validação
@@ -62,6 +125,56 @@ class HealthController extends AbstractController
     }
 
     #[PostMapping(path: '/health/test-email')]
+    #[OA\Post(
+        path: '/health/test-email',
+        summary: 'Testar envio de email',
+        description: 'Envia um email de teste usando o template de saque PIX',
+        tags: ['Health'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'teste@exemplo.com', description: 'Endereço de email do destinatário'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Email enviado com sucesso',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 200),
+                        new OA\Property(property: 'message', type: 'string', example: 'Test email sent successfully'),
+                        new OA\Property(property: 'data', properties: [
+                            new OA\Property(property: 'to', type: 'string', example: 'teste@exemplo.com'),
+                            new OA\Property(property: 'check_mailpit', type: 'string', example: 'http://localhost:8025'),
+                        ]),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Email não fornecido',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 400),
+                        new OA\Property(property: 'message', type: 'string', example: 'Email is required'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Falha ao enviar email',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'code', type: 'integer', example: 500),
+                        new OA\Property(property: 'message', type: 'string', example: 'Failed to send test email'),
+                    ]
+                )
+            ),
+        ]
+    )]
     public function testEmail()
     {
         $email = $this->request->input('email');
