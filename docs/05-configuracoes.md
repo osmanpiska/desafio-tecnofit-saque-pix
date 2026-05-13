@@ -269,6 +269,125 @@ date_default_timezone_set(env('APP_TIMEZONE', 'America/Sao_Paulo'));
 
 ---
 
+## Pacotes Adicionais
+
+### hyperf/validation
+
+Pacote para validação de dados e formulários:
+
+```bash
+composer require hyperf/validation:~3.1.0
+```
+
+Uso em controllers:
+
+```php
+use Hyperf\Validation\ValidationException;
+
+// Lançar exceção de validação manualmente
+throw ValidationException::withMessages([
+    'field' => 'Error message',
+])->status(422);
+```
+
+Uso em FormRequests:
+
+```php
+use Hyperf\Validation\Request\FormRequest;
+
+class CreateUserRequest extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+        ];
+    }
+}
+```
+
+### ramsey/uuid
+
+Pacote para geração de UUIDs (preparado para uso futuro):
+
+```bash
+composer require ramsey/uuid:^4.9
+```
+
+Uso:
+
+```php
+use Ramsey\Uuid\Uuid;
+
+$uuid = Uuid::uuid4()->toString(); // Ex: "550e8400-e29b-41d4-a716-446655440000"
+```
+
+---
+
+## Configuracao de Exceções
+
+Configurar handlers em `config/autoload/exceptions.php`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+return [
+    'handler' => [
+        'http' => [
+            App\Exception\Handler\NotFoundExceptionHandler::class,
+            App\Exception\Handler\ValidationExceptionHandler::class,
+            Hyperf\HttpServer\Exception\Handler\HttpExceptionHandler::class,
+            App\Exception\Handler\AppExceptionHandler::class,
+        ],
+    ],
+];
+```
+
+Handlers em ordem de prioridade:
+1. `NotFoundExceptionHandler` - Retorna 404 em formato JSON
+2. `ValidationExceptionHandler` - Retorna 422 com erros de validação
+3. `HttpExceptionHandler` - Handler padrão do Hyperf
+4. `AppExceptionHandler` - Captura erros 500 não tratados
+
+---
+
+## Constantes de Erro
+
+Editar `app/Constants/ErrorCode.php`:
+
+```php
+<?php
+
+namespace App\Constants;
+
+use Hyperf\Constants\AbstractConstants;
+use Hyperf\Constants\Annotation\Constants;
+
+#[Constants]
+class ErrorCode extends AbstractConstants
+{
+    /**
+     * @Message("Server Error！")
+     */
+    public const SERVER_ERROR = 500;
+
+    /**
+     * @Message("Validation Error")
+     */
+    public const VALIDATION_ERROR = 422;
+
+    /**
+     * @Message("Not Found")
+     */
+    public const NOT_FOUND = 404;
+}
+```
+
+---
+
 ## Proximo Passo
 
 Ver [06-deploy.md](06-deploy.md) para guia de deploy com Docker.

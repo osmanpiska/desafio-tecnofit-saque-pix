@@ -22,4 +22,14 @@ class ErrorCode extends AbstractConstants
      * @Message("Server Error！")
      */
     public const SERVER_ERROR = 500;
+
+    /**
+     * @Message("Validation Error")
+     */
+    public const VALIDATION_ERROR = 422;
+
+    /**
+     * @Message("Not Found")
+     */
+    public const NOT_FOUND = 404;
 }

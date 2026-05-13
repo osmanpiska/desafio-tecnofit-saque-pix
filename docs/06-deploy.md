@@ -82,76 +82,25 @@ networks:
     driver: bridge
 ```
 
-### docker-compose.yml (Desenvolvimento)
+### Desenvolvimento Local
 
-Para desenvolvimento local com hot-reload:
+Usar o mesmo `docker-compose.yml` com `APP_ENV=dev`:
 
-```yaml
-services:
-  app:
-    build:
-      context: .
-      dockerfile: dev.Dockerfile
-      args:
-        UID: 1000
-        GID: 1000
-    container_name: ${APP_NAME:-saque-pix}-app-dev
-    restart: unless-stopped
-    working_dir: /opt/www
-    volumes:
-      - ./:/opt/www
-      - /opt/www/runtime
-    ports:
-      - "${SERVER_PORT:-9502}:${SERVER_PORT:-9502}"
-    environment:
-      - APP_NAME=${APP_NAME:-saque-pix}
-      - APP_ENV=dev
-      - SCAN_CACHEABLE=false
-      - TZ=America/Sao_Paulo
-      - DB_DRIVER=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_DATABASE=saque_pix
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - SERVER_PORT=${SERVER_PORT:-9502}
-    networks:
-      - app-network
-    depends_on:
-      - mysql
-      - mailpit
+```bash
+# Criar .env para desenvolvimento
+cat > .env << 'EOF'
+APP_NAME=saque-pix
+APP_ENV=dev
+APP_DEBUG=true
+SERVER_PORT=9502
+DB_PASSWORD=root
+MYSQL_EXTERNAL_PORT=3306
+MAILPIT_WEB_PORT=8025
+MAILPIT_SMTP_PORT=1025
+EOF
 
-  mysql:
-    image: mysql:8.0
-    container_name: ${APP_NAME:-saque-pix}-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: saque_pix
-    ports:
-      - "${MYSQL_EXTERNAL_PORT:-3306}:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - app-network
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: ${APP_NAME:-saque-pix}-mailpit
-    restart: unless-stopped
-    ports:
-      - "${MAILPIT_WEB_PORT:-8025}:8025"
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
-    networks:
-      - app-network
-
-volumes:
-  mysql-data:
-
-networks:
-  app-network:
-    name: ${APP_NAME:-saque-pix}-network
-    driver: bridge
+# Iniciar servicos
+docker-compose up -d
 ```
 
 ---
@@ -200,52 +149,6 @@ EXPOSE 9501
 ENTRYPOINT ["php", "/opt/www/bin/hyperf.php", "start"]
 ```
 
-### dev.Dockerfile (Desenvolvimento)
-
-Imagem para desenvolvimento com usuário local:
-
-```dockerfile
-FROM hyperf/hyperf:8.4-alpine-v3.21-swoole
-
-LABEL maintainer="Saque PIX" version="1.0-dev"
-
-ARG timezone=America/Sao_Paulo
-ARG UID=1000
-ARG GID=1000
-
-ENV TIMEZONE=${timezone} \
-    APP_ENV=dev \
-    SCAN_CACHEABLE=(false)
-
-# Criar usuário local para evitar problemas de permissão
-RUN addgroup -g ${GID} application && \
-    adduser -S -D -u ${UID} -G application -s /bin/ash -h /home/application application
-
-RUN set -ex \
-    && apk update \
-    && apk add --no-cache git \
-    && php -v \
-    && cd /etc/php* \
-    && { \
-        echo "upload_max_filesize=128M"; \
-        echo "post_max_size=128M"; \
-        echo "memory_limit=1G"; \
-        echo "date.timezone=${TIMEZONE}"; \
-    } | tee conf.d/99_overrides.ini \
-    && ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime \
-    && echo "${TIMEZONE}" > /etc/timezone \
-    && rm -rf /var/cache/apk/* /tmp/* /usr/share/man
-
-RUN chmod +x /usr/local/bin/composer
-
-USER application
-
-WORKDIR /opt/www
-
-EXPOSE 9502
-
-ENTRYPOINT ["php", "/opt/www/bin/hyperf.php", "start"]
-```
 
 ---
 
@@ -276,47 +179,32 @@ docker-compose down
 docker-compose down -v
 ```
 
-### Desenvolvimento
-
-```bash
-# Usar docker-compose de desenvolvimento
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-
-# Ou se tiver um arquivo docker-compose.dev.yml separado:
-docker-compose -f docker-compose.dev.yml up -d
-```
 
 ---
 
 ## Health Check
 
-Adicione a rota de health check no `config/routes.php`:
-
-```php
-<?php
-
-declare(strict_types=1);
-
-use Hyperf\HttpServer\Router\Router;
-
-Router::addRoute(['GET', 'POST', 'HEAD'], '/', 'App\Controller\IndexController@index');
-
-// Health check para monitoramento
-Router::get('/health', function () {
-    return [
-        'status' => 'ok',
-        'service' => 'saque-pix',
-        'time' => date('Y-m-d H:i:s'),
-        'version' => '1.0.0',
-    ];
-});
-```
-
-Verificar se está funcionando:
+O projeto inclui um `HealthController` com endpoints de monitoramento e teste:
 
 ```bash
-curl http://localhost:9501/health
+# Verificar saude da aplicacao (banco de dados, timestamp)
+curl http://localhost:9502/health
+# Resposta: {"status":"ok","timestamp":"2026-05-13...","database":{"status":"ok"}}
+
+# Testar erro de validacao (HTTP 422)
+curl http://localhost:9502/health/validation-error
+# Resposta: {"code":422,"message":"Validation Error","errors":{...}}
+
+# Testar erro de servidor (HTTP 500)
+curl http://localhost:9502/health/error
+# Resposta: {"code":500,"message":"Server Error","errors":{...}}
+
+# Testar rota inexistente (HTTP 404)
+curl http://localhost:9502/rota-que-nao-existe
+# Resposta: {"code":404,"message":"Not Found","errors":{...}}
 ```
+
+Todos os erros retornam JSON estruturado com `code`, `message` e `errors`.
 
 ---
 

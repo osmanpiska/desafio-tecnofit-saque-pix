@@ -17,11 +17,12 @@ use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\Logger\LoggerFactory;
+use Hyperf\Validation\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-class AppExceptionHandler extends ExceptionHandler
+class ValidationExceptionHandler extends ExceptionHandler
 {
     protected LoggerInterface $fileLogger;
 
@@ -37,30 +38,27 @@ class AppExceptionHandler extends ExceptionHandler
     {
         $this->stopPropagation();
 
-        $message = sprintf('%s[%s] in %s', $throwable->getMessage(), $throwable->getLine(), $throwable->getFile());
-        $trace = $throwable->getTraceAsString();
+        /** @var ValidationException $throwable */
+        $code = $throwable->getCode() ?: ErrorCode::VALIDATION_ERROR;
+        $message = $throwable->getMessage() ?: ErrorCode::getMessage($code);
+        $errors = $throwable->errors();
 
         // Log no arquivo
-        $this->fileLogger->error($message);
-        $this->fileLogger->error($trace);
+        $this->fileLogger->warning("Validation Error: {$message}", $errors);
+        // Log no console
+        $this->stdoutLogger->warning("Validation Error: {$message}");
 
-        // Log no console (docker logs)
-        $this->stdoutLogger->error($message);
-        $this->stdoutLogger->error($trace);
-
-        $data = [
-            'code' => ErrorCode::SERVER_ERROR,
-            'message' => ErrorCode::getMessage(ErrorCode::SERVER_ERROR),
-            'errors' => ['server' => 'An unexpected error occurred. Please try again later.'],
-        ];
-
-        return $response->withStatus(ErrorCode::SERVER_ERROR)
+        return $response->withStatus(ErrorCode::VALIDATION_ERROR)
             ->withHeader('Content-Type', 'application/json')
-            ->withBody(new SwooleStream(json_encode($data)));
+            ->withBody(new SwooleStream(json_encode([
+                'code' => $code,
+                'message' => $message,
+                'errors' => $errors,
+            ])));
     }
 
     public function isValid(Throwable $throwable): bool
     {
-        return true;
+        return $throwable instanceof ValidationException;
     }
 }

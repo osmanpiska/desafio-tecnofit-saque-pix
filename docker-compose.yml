@@ -2,19 +2,19 @@ services:
   app:
     build:
       context: .
-      dockerfile: dev.Dockerfile
+      dockerfile: Dockerfile
     container_name: ${APP_NAME:-saque-pix}-app
     restart: unless-stopped
     working_dir: /var/www
     volumes:
       - ./:/var/www
       - ./vendor:/var/www/vendor
-      - runtime-data:/var/www/runtime
     ports:
       - "${SERVER_PORT:-9502}:${SERVER_PORT:-9502}"
     environment:
       - APP_NAME=${APP_NAME:-saque-pix}
-      - APP_ENV=prod
+      - APP_ENV=dev
+      - SCAN_CACHEABLE=false
       - TZ=America/Sao_Paulo
       - DB_DRIVER=mysql
       - DB_HOST=mysql
@@ -23,12 +23,21 @@ services:
       - DB_USERNAME=root
       - DB_PASSWORD=root
       - DB_CHARSET=utf8mb4
+      - DB_COLLATION=utf8mb4_unicode_ci
       - SERVER_PORT=${SERVER_PORT:-9502}
     networks:
       - app-network
     depends_on:
       mysql:
         condition: service_healthy
+    user: root
+    command: >
+      sh -c "
+        mkdir -p /var/www/runtime && chmod -R 777 /var/www/runtime &&
+        git config --global --add safe.directory /var/www &&
+        composer install --no-interaction --prefer-dist &&
+        php bin/hyperf.php start
+      "
 
   mysql:
     image: mysql:8.0
@@ -61,7 +70,6 @@ services:
 
 volumes:
   mysql-data:
-  runtime-data:
 
 networks:
   app-network:
