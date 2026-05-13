@@ -9,7 +9,7 @@ services:
     volumes:
       - ./:/var/www
       - ./vendor:/var/www/vendor
-      - /var/www/runtime
+      - runtime-data:/var/www/runtime
     ports:
       - "${SERVER_PORT:-9502}:${SERVER_PORT:-9502}"
     environment:
@@ -61,6 +61,7 @@ services:
 
 volumes:
   mysql-data:
+  runtime-data:
 
 networks:
   app-network:
