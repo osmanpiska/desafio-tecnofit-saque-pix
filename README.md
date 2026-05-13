@@ -368,7 +368,6 @@ app/
 ## Documentação Complementar
 
 - [Desafio Tecnofit](docs/01-desafio_tecnofit.md) - Requisitos originais do case
-- [README Docs](docs/README.md) - Documentação adicional do projeto
 - [Resumo](docs/RESUMO.md) - Resumo técnico da implementação
 
 ---
