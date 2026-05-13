@@ -129,4 +129,4 @@ De novo, **foque no que foi pedido no case**.
 
 ## Proximo Passo
 
-Ver [02-instalacao.md](02-instalacao.md) para comecar a instalacao do ambiente.
+Ver [README.md](../README.md) na raiz do projeto para instrucoes de instalacao e execucao.
