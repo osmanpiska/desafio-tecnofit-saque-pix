@@ -9,22 +9,26 @@ declare(strict_types=1);
  * @contact  group@hyperf.io
  * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
  */
+
+use function Hyperf\Support\env;
+
 return [
-    'default' => [
-        'handler' => [
-            'class' => Monolog\Handler\StreamHandler::class,
-            'constructor' => [
-                'stream' => BASE_PATH . '/runtime/logs/hyperf.log',
-                'level' => Monolog\Logger::DEBUG,
-            ],
-        ],
-        'formatter' => [
-            'class' => Monolog\Formatter\LineFormatter::class,
-            'constructor' => [
-                'format' => null,
-                'dateFormat' => 'Y-m-d H:i:s',
-                'allowInlineLineBreaks' => true,
-            ],
-        ],
-    ],
+	'default' => [
+		'handler' => [
+			'class' => Monolog\Handler\RotatingFileHandler::class,
+			'constructor' => [
+				'filename' => BASE_PATH . '/runtime/logs/hyperf.log',
+				'maxFiles' => 7, 
+				'level' => env('LOG_LEVEL', 'debug'),
+			],
+		],
+		'formatter' => [
+			'class' => Monolog\Formatter\LineFormatter::class,
+			'constructor' => [
+				'format' => null,
+				'dateFormat' => 'Y-m-d H:i:s',
+				'allowInlineLineBreaks' => true,
+			],
+		],
+	],
 ];

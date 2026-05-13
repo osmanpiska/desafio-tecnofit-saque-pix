@@ -1,4 +1,8 @@
-# 04 - Configuracoes de Ambiente
+# 05 - Configuracoes de Ambiente
+
+Guia completo de configuracao do ambiente para o projeto Saque PIX.
+
+---
 
 ## Arquivo .env
 
@@ -8,51 +12,99 @@ Criar arquivo `.env` na raiz (copiar de `.env.example`):
 cp .env.example .env
 ```
 
-### Configuracoes Principais
+### Variáveis de Ambiente Completas
 
 ```env
-# Ambiente
-APP_ENV=dev
+# ============================================
+# Aplicacao
+# ============================================
 APP_NAME=saque-pix
+APP_ENV=dev
+APP_DEBUG=true
 
-# Servidor
-SERVER_HOST=0.0.0.0
-SERVER_PORT=9501
-
-# Banco de Dados MySQL
+# ============================================
+# Banco de Dados - MySQL 8
+# ============================================
 DB_DRIVER=mysql
-DB_HOST=localhost
+DB_HOST=mysql
 DB_PORT=3306
 DB_DATABASE=saque_pix
 DB_USERNAME=root
-DB_PASSWORD=secret
+DB_PASSWORD=root
 DB_CHARSET=utf8mb4
 DB_COLLATION=utf8mb4_unicode_ci
 DB_PREFIX=
 
-# Timezone (configurado na instalacao)
-TIMEZONE=America/Sao_Paulo
+# Porta externa do MySQL (host)
+MYSQL_EXTERNAL_PORT=3306
 
-# Redis (desabilitado na instalacao)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
+# ============================================
+# Hyperf Server
+# ============================================
+SERVER_HOST=0.0.0.0
+SERVER_PORT=9502
+SERVER_MODE=SWOOLE_PROCESS
 
-# Log
+# ============================================
+# Logging
+# ============================================
 LOG_LEVEL=debug
+LOG_CHANNEL=hyperf
+
+# ============================================
+# Email - Mailpit (servico de teste)
+# ============================================
+MAIL_DRIVER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_ENCRYPTION=
+MAIL_FROM_ADDRESS=noreply@saque-pix.local
+MAIL_FROM_NAME=SaquePIX
+MAILPIT_WEB_PORT=8025
+MAILPIT_SMTP_PORT=1025
 ```
+
+### Descricao das Variáveis
+
+| Variavel | Valor Padrao | Descricao |
+|----------|--------------|-----------|
+| `APP_NAME` | saque-pix | Nome da aplicacao (define nomes dos containers) |
+| `APP_ENV` | dev | Ambiente: dev, test, prod |
+| `APP_DEBUG` | true | Modo debug (mostra erros detalhados) |
+| `SERVER_HOST` | 0.0.0.0 | IP do servidor (0.0.0.0 = todas interfaces) |
+| `SERVER_PORT` | 9502 | Porta do servidor HTTP (interna e externa) |
+| `SERVER_MODE` | SWOOLE_PROCESS | Modo Swoole: SWOOLE_BASE ou SWOOLE_PROCESS |
+| `LOG_LEVEL` | debug | Nivel de log: debug, info, warning, error |
+| `LOG_CHANNEL` | hyperf | Canal de log padrao |
+| `DB_HOST` | mysql | Host do MySQL (nome do servico no Docker) |
+| `DB_PASSWORD` | root | Senha do MySQL |
+| `MYSQL_EXTERNAL_PORT` | 3306 | Porta externa do MySQL no host (evita conflitos) |
+| `MAIL_HOST` | mailpit | Host SMTP para envio de email |
+| `MAIL_PORT` | 1025 | Porta SMTP do Mailpit (interna) |
+| `MAILPIT_WEB_PORT` | 8025 | Porta externa da interface web do Mailpit |
+| `MAILPIT_SMTP_PORT` | 1025 | Porta externa SMTP do Mailpit no host |
+
+---
 
 ## Configuracao do Banco (config/autoload/databases.php)
 
 ```php
+<?php
+
+declare(strict_types=1);
+
+use function Hyperf\Support\env;
+
 return [
     'default' => [
         'driver' => env('DB_DRIVER', 'mysql'),
-        'host' => env('DB_HOST', 'localhost'),
+        'host' => env('DB_HOST', 'mysql'),
         'port' => env('DB_PORT', 3306),
-        'database' => env('DB_DATABASE', 'hyperf'),
+        'database' => env('DB_DATABASE', 'saque_pix'),
         'username' => env('DB_USERNAME', 'root'),
-        'password' => env('DB_PASSWORD', ''),
+        'password' => env('DB_PASSWORD', 'root'),
         'charset' => env('DB_CHARSET', 'utf8mb4'),
         'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
         'prefix' => env('DB_PREFIX', ''),
@@ -68,46 +120,155 @@ return [
 ];
 ```
 
+---
+
 ## Configuracao do Servidor (config/autoload/server.php)
 
 ```php
+<?php
+
+declare(strict_types=1);
+
+use Hyperf\Server\Event;
+use Hyperf\Server\Server;
+use Swoole\Constant;
+use function Hyperf\Support\env;
+
 return [
-    'type' => Hyperf\Server\CoroutineServer::class,
-    'mode' => SWOOLE_PROCESS,
+    'mode' => constant(env('SERVER_MODE', 'SWOOLE_BASE')),
     'servers' => [
         [
             'name' => 'http',
-            'type' => Hyperf\Server\Server::SERVER_HTTP,
-            'host' => '0.0.0.0',
-            'port' => 9501,
+            'type' => Server::SERVER_HTTP,
+            'host' => env('SERVER_HOST', '0.0.0.0'),
+            'port' => (int) env('SERVER_PORT', 9501),
             'sock_type' => SWOOLE_SOCK_TCP,
             'callbacks' => [
-                Hyperf\Server\Event\SwooleEvent::ON_REQUEST => [Hyperf\HttpServer\Server::class, 'onRequest'],
+                Event::ON_REQUEST => [Hyperf\HttpServer\Server::class, 'onRequest'],
+            ],
+            'options' => [
+                'enable_request_lifecycle' => false,
             ],
         ],
     ],
     'settings' => [
-        'enable_coroutine' => true,
-        'worker_num' => swoole_cpu_num(),
-        'pid_file' => BASE_PATH . '/runtime/hyperf.pid',
-        'open_tcp_nodelay' => true,
-        'max_coroutine' => 100000,
-        'enable_deadlock_check' => true,
-        'log_level' => SWOOLE_LOG_INFO,
+        Constant::OPTION_ENABLE_COROUTINE => true,
+        Constant::OPTION_WORKER_NUM => swoole_cpu_num(),
+        Constant::OPTION_PID_FILE => BASE_PATH . '/runtime/hyperf.pid',
+        Constant::OPTION_OPEN_TCP_NODELAY => true,
+        Constant::OPTION_MAX_COROUTINE => 100000,
+        Constant::OPTION_OPEN_HTTP2_PROTOCOL => true,
+        Constant::OPTION_MAX_REQUEST => 100000,
+        Constant::OPTION_SOCKET_BUFFER_SIZE => 2 * 1024 * 1024,
+        Constant::OPTION_BUFFER_OUTPUT_SIZE => 2 * 1024 * 1024,
+    ],
+    'callbacks' => [
+        Event::ON_WORKER_START => [Hyperf\Framework\Bootstrap\WorkerStartCallback::class, 'onWorkerStart'],
+        Event::ON_PIPE_MESSAGE => [Hyperf\Framework\Bootstrap\PipeMessageCallback::class, 'onPipeMessage'],
+        Event::ON_WORKER_EXIT => [Hyperf\Framework\Bootstrap\WorkerExitCallback::class, 'onWorkerExit'],
     ],
 ];
 ```
 
-## Timezone
+---
 
-Ja configurado para `America/Sao_Paulo` na instalacao.
-
-Verificar em `config/config.php`:
+## Configuracao de Logging (config/autoload/logger.php)
 
 ```php
-date_default_timezone_set(env('TIMEZONE', 'America/Sao_Paulo'));
+<?php
+
+declare(strict_types=1);
+
+use function Hyperf\Support\env;
+
+return [
+    'default' => [
+        'handler' => [
+            'class' => Monolog\Handler\RotatingFileHandler::class,
+            'constructor' => [
+                'filename' => BASE_PATH . '/runtime/logs/hyperf.log',
+                'maxFiles' => 7,
+                'level' => env('LOG_LEVEL', 'debug'),
+            ],
+        ],
+        'formatter' => [
+            'class' => Monolog\Formatter\LineFormatter::class,
+            'constructor' => [
+                'format' => null,
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+            ],
+        ],
+    ],
+];
 ```
+
+### Níveis de Log
+
+| Nivel | Uso |
+|-------|-----|
+| `debug` | Desenvolvimento, informacoes detalhadas |
+| `info` | Eventos normais da aplicacao |
+| `warning` | Advertencias, algo pode estar errado |
+| `error` | Erros que precisam de atencao |
+
+---
+
+## Configuracao de Email (config/autoload/mail.php)
+
+Criar arquivo `config/autoload/mail.php`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use function Hyperf\Support\env;
+
+return [
+    'default' => [
+        'driver' => env('MAIL_DRIVER', 'smtp'),
+        'host' => env('MAIL_HOST', 'mailpit'),
+        'port' => env('MAIL_PORT', 1025),
+        'username' => env('MAIL_USERNAME'),
+        'password' => env('MAIL_PASSWORD'),
+        'encryption' => env('MAIL_ENCRYPTION'),
+        'from' => [
+            'address' => env('MAIL_FROM_ADDRESS', 'noreply@saque-pix.local'),
+            'name' => env('MAIL_FROM_NAME', 'SaquePIX'),
+        ],
+    ],
+];
+```
+
+---
+
+## Timezone
+
+Configurado em `config/config.php`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use function Hyperf\Support\env;
+
+return [
+    'app_name' => env('APP_NAME', 'saque-pix'),
+    'app_env' => env('APP_ENV', 'dev'),
+    'scan_cacheable' => env('SCAN_CACHEABLE', false),
+];
+```
+
+E definido no inicio da aplicacao (`config/container.php` ou bootstrap):
+
+```php
+date_default_timezone_set(env('APP_TIMEZONE', 'America/Sao_Paulo'));
+```
+
+---
 
 ## Proximo Passo
 
-Ver [06-deploy.md](06-deploy.md) para guia de deploy.
+Ver [06-deploy.md](06-deploy.md) para guia de deploy com Docker.

@@ -16,7 +16,7 @@ ARG timezone
 ARG UID=1000
 ARG GID=1000
 
-ENV TIMEZONE=${timezone:-"Asia/Shanghai"} \
+ENV TIMEZONE=${timezone:-"America/Sao_Paulo"} \
     APP_ENV=dev \
     SCAN_CACHEABLE=(false)
 
