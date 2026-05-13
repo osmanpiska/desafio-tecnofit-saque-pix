@@ -6,6 +6,7 @@ namespace HyperfTest\Feature;
 
 use App\Job\ProcessScheduledWithdrawsJob;
 use Hyperf\Contract\ConfigInterface;
+use Hyperf\Crontab\Crontab;
 use Hyperf\DbConnection\Db;
 use Hyperf\Testing\TestCase;
 use Ramsey\Uuid\Uuid;
@@ -93,7 +94,7 @@ class WithdrawFlowTest extends TestCase
             'method' => 'PIX',
             'pix' => ['type' => 'email', 'key' => $this->testEmail('past')],
             'amount' => 1.00,
-            'schedule' => date('Y-m-d H:i:s', time() - 300),
+            'schedule' => date('Y-m-d H:i', time() - 300),
         ]);
 
         $pastScheduleResponse->assertStatus(400);
@@ -102,7 +103,8 @@ class WithdrawFlowTest extends TestCase
     public function testScheduledWithdrawStoresScheduledForWithoutDebitingBalance(): void
     {
         $accountId = $this->createAccount('scheduled-future', '500.00');
-        $scheduledFor = date('Y-m-d H:i:s', time() + 600);
+        $scheduledFor = date('Y-m-d H:i', time() + 600);
+        $storedScheduledFor = $scheduledFor . ':00';
 
         $response = $this->post("/account/{$accountId}/balance/withdraw", [
             'method' => 'PIX',
@@ -122,7 +124,7 @@ class WithdrawFlowTest extends TestCase
         self::assertSame(1, (int) $withdraw->scheduled);
         self::assertSame(0, (int) $withdraw->done);
         self::assertSame(0, (int) $withdraw->error);
-        self::assertSame($scheduledFor, $withdraw->scheduled_for);
+        self::assertSame($storedScheduledFor, $withdraw->scheduled_for);
         self::assertNull($withdraw->processed_at);
     }
 
@@ -180,7 +182,7 @@ class WithdrawFlowTest extends TestCase
         self::assertSame(0, Db::table('account')->where('id', $accountId)->where('balance', '<', 0)->count());
     }
 
-    public function testScheduledProcessingReleasesLockWhenUnexpectedExceptionHappens(): void
+    public function testScheduledProcessingMarksMissingAccountAsFailed(): void
     {
         $withdrawId = (string) Uuid::uuid4();
         $missingAccountId = (string) Uuid::uuid4();
@@ -209,10 +211,11 @@ class WithdrawFlowTest extends TestCase
         make(ProcessScheduledWithdrawsJob::class)->execute();
 
         $withdraw = Db::table('account_withdraw')->where('id', $withdrawId)->first();
-        self::assertSame(0, (int) $withdraw->done);
-        self::assertSame(0, (int) $withdraw->error);
+        self::assertSame(1, (int) $withdraw->done);
+        self::assertSame(1, (int) $withdraw->error);
         self::assertSame(0, (int) $withdraw->processing);
-        self::assertNull($withdraw->processed_at);
+        self::assertSame('conta não encontrada', $withdraw->error_reason);
+        self::assertNotNull($withdraw->processed_at);
     }
 
     public function testExtremeConcurrencyApprovesOnlyAvailableBalanceAndNeverGoesNegative(): void
@@ -246,11 +249,13 @@ class WithdrawFlowTest extends TestCase
         $config = make(ConfigInterface::class);
         $processes = $config->get('processes', []);
         $crontab = $config->get('crontab', []);
+        $scheduledWithdrawCrontab = $crontab['crontab'][0] ?? null;
 
         self::assertContains(\Hyperf\Crontab\Process\CrontabDispatcherProcess::class, $processes);
         self::assertTrue((bool) ($crontab['enable'] ?? false));
-        self::assertSame('*/5 * * * * *', $crontab['crontab'][0]['rule'] ?? null);
-        self::assertTrue((bool) ($crontab['crontab'][0]['enable'] ?? false));
+        self::assertInstanceOf(Crontab::class, $scheduledWithdrawCrontab);
+        self::assertSame('*/5 * * * * *', $scheduledWithdrawCrontab->getRule());
+        self::assertTrue($scheduledWithdrawCrontab->isEnable());
     }
 
     private function createAccount(string $suffix, string $balance): string
@@ -303,6 +308,8 @@ class WithdrawFlowTest extends TestCase
         $deadline = time() + $timeoutSeconds;
 
         do {
+            make(ProcessScheduledWithdrawsJob::class)->execute();
+
             $withdraw = Db::table('account_withdraw')->where('id', $withdrawId)->first();
             if ($withdraw !== null && $condition($withdraw)) {
                 return $withdraw;

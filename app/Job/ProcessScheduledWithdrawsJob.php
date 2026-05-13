@@ -11,24 +11,14 @@ use App\Processor\WithdrawProcessor;
 use App\Repositories\AccountRepository;
 use App\Repositories\WithdrawRepository;
 use App\Services\EmailService;
-use App\Strategy\WithdrawMethodResolver;
-use Hyperf\Crontab\Annotation\Crontab;
 use Hyperf\DbConnection\Db;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
-#[Crontab(
-    rule: "*/5 * * * * *",
-    name: "process-scheduled-withdraws",
-    callback: "execute",
-    memo: "Processa saques agendados a cada 5 segundos",
-    enable: true
-)]
 class ProcessScheduledWithdrawsJob
 {
     protected LoggerInterface $logger;
     protected WithdrawProcessor $processor;
-    protected WithdrawMethodResolver $methodResolver;
     protected EmailService $emailService;
 
     public function __construct(
@@ -36,7 +26,6 @@ class ProcessScheduledWithdrawsJob
     ) {
         $this->logger = $container->get(LoggerInterface::class);
         $this->processor = $container->get(WithdrawProcessor::class);
-        $this->methodResolver = $container->get(WithdrawMethodResolver::class);
         $this->emailService = $container->get(EmailService::class);
     }
 
@@ -124,13 +113,20 @@ class ProcessScheduledWithdrawsJob
 
         try {
             $result = 'success';
+            $notification = null;
 
-            Db::transaction(function () use ($lockedWithdraw, &$result) {
+            Db::transaction(function () use ($lockedWithdraw, &$result, &$notification) {
                 // Recarrega com lock pessimista na conta
                 $account = AccountRepository::findWithLock($lockedWithdraw->account_id);
 
                 if (!$account) {
-                    throw new \RuntimeException('Conta não encontrada');
+                    $result = 'error';
+                    $this->processor->processFailure($lockedWithdraw, 'conta não encontrada');
+                    $this->logger->warning('Saque agendado falhou por conta inexistente', [
+                        'withdraw_id' => $lockedWithdraw->id,
+                        'account_id' => $lockedWithdraw->account_id,
+                    ]);
+                    return;
                 }
 
                 // Tenta processar o débito
@@ -142,13 +138,12 @@ class ProcessScheduledWithdrawsJob
                         'amount' => $lockedWithdraw->amount,
                     ]);
 
-                    // Enviar email de notificação após o commit
                     $pixData = $lockedWithdraw->pix?->toArray();
                     if ($pixData) {
                         $email = $pixData['type'] === 'email' ? $pixData['key'] : null;
                         if ($email) {
                             $lockedWithdraw->refresh();
-                            $dto = new WithdrawEmailDTO(
+                            $notification = new WithdrawEmailDTO(
                                 email: $email,
                                 amount: (float) $lockedWithdraw->amount,
                                 processedAt: $lockedWithdraw->processed_at instanceof \DateTime
@@ -158,7 +153,6 @@ class ProcessScheduledWithdrawsJob
                                 pixType: PixKeyType::EMAIL,
                                 pixKey: $email
                             );
-                            $this->emailService->sendWithdrawCompleted($dto);
                         }
                     }
                 } catch (\RuntimeException $e) {
@@ -177,6 +171,10 @@ class ProcessScheduledWithdrawsJob
                     }
                 }
             });
+
+            if ($notification instanceof WithdrawEmailDTO) {
+                $this->emailService->sendWithdrawCompleted($notification);
+            }
 
             return $result;
         } catch (\Throwable $e) {

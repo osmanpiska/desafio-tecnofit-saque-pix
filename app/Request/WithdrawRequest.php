@@ -30,7 +30,7 @@ class WithdrawRequest extends FormRequest
             'pix.type' => 'required_if:method,PIX|string|in:email',
             'pix.key' => 'required_if:method,PIX|string|max:255',
             'amount' => 'required|numeric|gt:0',
-            'schedule' => 'nullable|date_format:Y-m-d H:i:s|after:now',
+            'schedule' => 'nullable|date|after:now',
         ];
     }
 
@@ -51,7 +51,7 @@ class WithdrawRequest extends FormRequest
             'amount.required' => 'O valor do saque é obrigatório',
             'amount.numeric' => 'O valor do saque deve ser numérico',
             'amount.gt' => 'O valor do saque deve ser maior que zero',
-            'schedule.date_format' => 'O formato da data de agendamento deve ser Y-m-d H:i:s',
+            'schedule.date' => 'O formato da data de agendamento deve ser Y-m-d H:i ou Y-m-d H:i:s',
             'schedule.after' => 'A data de agendamento deve ser futura',
         ];
     }

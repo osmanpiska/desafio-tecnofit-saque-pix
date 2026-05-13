@@ -223,17 +223,17 @@ Esta suíte cobre:
 - Criação de saque agendado sem débito imediato.
 - Persistência correta de `scheduled_for`.
 - Rejeição de agendamento no passado.
-- Processamento de saque agendado pela cron real.
+- Processamento de saque agendado pelo mesmo job executado pela cron.
 - Preenchimento de `processed_at`.
 - Falha de saque agendado sem saldo.
 - Garantia de que saque agendado não deixa saldo negativo.
 - Idempotência no processamento agendado.
-- Release do campo `processing` em caso de exceção.
+- Marcação de erro definitivo quando o saque agendado referencia dados inconsistentes.
 - Concorrência extrema com 1.000 requisições simultâneas.
 
 ### Observação Sobre os Testes de Cron
 
-Os testes de schedule aguardam a cron real do Hyperf processar os saques vencidos. A cron está configurada para rodar a cada 5 segundos:
+Os testes de schedule executam diretamente o mesmo job usado pela cron para evitar falso negativo por timing do dispatcher durante a suíte. A configuração da cron também é validada e está definida para rodar a cada 5 segundos:
 
 ```text
 */5 * * * * *
@@ -281,9 +281,11 @@ curl -X POST http://localhost:9502/account/{accountId}/balance/withdraw \
       "key": "usuario@email.com"
     },
     "amount": 10.00,
-    "schedule": "2026-12-31 23:59:59"
+    "schedule": "2026-12-31 23:59"
   }'
 ```
+
+O campo `schedule` aceita o formato do case (`Y-m-d H:i`) e também `Y-m-d H:i:s`.
 
 ---
 
