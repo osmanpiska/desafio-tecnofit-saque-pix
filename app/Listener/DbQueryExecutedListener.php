@@ -20,6 +20,8 @@ use Hyperf\Logger\LoggerFactory;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
+use function Hyperf\Support\env;
+
 #[Listener]
 class DbQueryExecutedListener implements ListenerInterface
 {
@@ -45,6 +47,10 @@ class DbQueryExecutedListener implements ListenerInterface
      */
     public function process(object $event): void
     {
+        if (! filter_var(env('DB_QUERY_LOG', false), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
         if ($event instanceof QueryExecuted) {
             $sql = $event->sql;
             if (! Arr::isAssoc($event->bindings)) {

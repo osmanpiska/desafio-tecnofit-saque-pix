@@ -1,14 +1,19 @@
 <?php
 
 declare(strict_types=1);
+
+namespace HyperfTest\Unit;
+
+use PHPUnit\Framework\TestCase;
+
 /**
- * This file is part of Hyperf.
- *
- * @link     https://www.hyperf.io
- * @document https://hyperf.wiki
- * @contact  group@hyperf.io
- * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
+ * @internal
+ * @coversNothing
  */
-test('example', function () {
-    expect(true)->toBeTrue();
-});
+class ExampleTest extends TestCase
+{
+    public function testExample(): void
+    {
+        self::assertTrue(true);
+    }
+}

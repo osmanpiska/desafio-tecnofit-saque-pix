@@ -26,7 +26,7 @@ class ErrorCode extends AbstractConstants
     /**
      * @Message("Validation Error")
      */
-    public const VALIDATION_ERROR = 422;
+    public const VALIDATION_ERROR = 400;
 
     /**
      * @Message("Not Found")

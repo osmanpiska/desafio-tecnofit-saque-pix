@@ -17,8 +17,10 @@ use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
 use Hyperf\Logger\LoggerFactory;
+use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Throwable;
 
 class AppExceptionHandler extends ExceptionHandler
@@ -36,6 +38,17 @@ class AppExceptionHandler extends ExceptionHandler
     public function handle(Throwable $throwable, ResponseInterface $response)
     {
         $this->stopPropagation();
+
+        if ($this->isClientError($throwable)) {
+            $statusCode = $this->resolveStatusCode($throwable);
+
+            return $response->withStatus($statusCode)
+                ->withHeader('Content-Type', 'application/json')
+                ->withBody(new SwooleStream(json_encode([
+                    'code' => $statusCode,
+                    'message' => $throwable->getMessage(),
+                ])));
+        }
 
         $message = sprintf('%s[%s] in %s', $throwable->getMessage(), $throwable->getLine(), $throwable->getFile());
         $trace = $throwable->getTraceAsString();
@@ -62,5 +75,18 @@ class AppExceptionHandler extends ExceptionHandler
     public function isValid(Throwable $throwable): bool
     {
         return true;
+    }
+
+    private function isClientError(Throwable $throwable): bool
+    {
+        return $throwable instanceof InvalidArgumentException
+            || ($throwable instanceof RuntimeException && in_array($throwable->getCode(), [400, 404], true));
+    }
+
+    private function resolveStatusCode(Throwable $throwable): int
+    {
+        $code = $throwable->getCode();
+
+        return in_array($code, [400, 404], true) ? $code : 400;
     }
 }

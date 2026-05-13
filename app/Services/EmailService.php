@@ -39,21 +39,22 @@ class EmailService
                 $message->to($dto->email);
                 $message->subject('Saque PIX Concluído - R$ ' . number_format($dto->amount, 2, ',', '.'));
             });
+            $this->closeTransport();
 
-            // Log de sucesso
+            // Log de sucesso (email mascarado por segurança)
             $this->logger->info('Email sent successfully', [
-                'to' => $dto->email,
+                'to' => $this->maskEmail($dto->email),
                 'withdraw_id' => $dto->withdrawId,
                 'amount' => $dto->amount,
             ]);
 
-            $this->stdoutLogger->info("Email sent to: {$dto->email}");
+            $this->stdoutLogger->info("Email sent to: {$this->maskEmail($dto->email)}");
 
             return true;
         } catch (Throwable $e) {
-            // Log de erro
+            // Log de erro (email mascarado por segurança)
             $this->logger->error('Failed to send email', [
-                'to' => $dto->email,
+                'to' => $this->maskEmail($dto->email),
                 'withdraw_id' => $dto->withdrawId,
                 'error' => $e->getMessage(),
             ]);
@@ -79,5 +80,34 @@ class EmailService
         );
 
         return $this->sendWithdrawCompleted($dto);
+    }
+
+    private function maskEmail(string $email): string
+    {
+        $parts = explode('@', $email);
+        if (count($parts) !== 2) {
+            return '***';
+        }
+
+        $name = $parts[0];
+        $domain = $parts[1];
+
+        $maskedName = strlen($name) > 2
+            ? substr($name, 0, 2) . str_repeat('*', strlen($name) - 2)
+            : str_repeat('*', strlen($name));
+
+        return $maskedName . '@' . $domain;
+    }
+
+    private function closeTransport(): void
+    {
+        try {
+            $transport = Mail::getSymfonyTransport();
+            if (method_exists($transport, 'stop')) {
+                $transport->stop();
+            }
+        } catch (Throwable) {
+            // Fechar a conexão SMTP é uma otimização para testes e shutdown limpo.
+        }
     }
 }
