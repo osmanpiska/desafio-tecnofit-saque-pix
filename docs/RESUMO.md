@@ -116,13 +116,19 @@ resources/views/emails/
 ✅ **Health Check**: Endpoint para monitoramento  
 ✅ **Enums**: PixKeyType (EMAIL), WithdrawMethod (PIX)  
 ✅ **DTOs**: WithdrawEmailDTO tipado  
+✅ **Saque PIX**: Endpoint `POST /account/{id}/balance/withdraw`  
+✅ **Validações**: Saldo insuficiente, agendamento no passado  
+✅ **Cron**: Processamento automático de saques agendados a cada 5s  
+✅ **Concorrência**: Lock pessimista e atômico (1.000 requisições simultâneas testadas)  
+✅ **Testes**: Suíte completa de integração (`WithdrawFlowTest`)
 
-## Próximos Passos (Implementação do Case)
+## Arquitetura
 
-1. **Criar tabelas** no banco (account, account_withdraw, account_withdraw_pix)
-2. **Implementar endpoint** `POST /account/{id}/balance/withdraw`
-3. **Adicionar validações** de saldo e regras de negócio
-4. **Criar cron** para saques agendados
-5. **Integrar envio de email** no fluxo de saque
+- **Controller**: Endpoints HTTP (Health, Withdraw, Admin)
+- **Services**: Lógica de negócio (Email, Withdraw)
+- **Repositories**: Acesso a dados (Account, Withdraw, Pix)
+- **Processor**: Débito, falha e lock de saques
+- **Strategy**: Métodos de saque (PixHandler expansível)
+- **Job**: Cron de processamento agendado
 
-Ver [GUIA_IMPLEMENTACAO.md](GUIA_IMPLEMENTACAO.md) para detalhes do case.
+Ver [docs/01-desafio_tecnofit.md](01-desafio_tecnofit.md) para requisitos originais do case.

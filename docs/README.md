@@ -91,14 +91,16 @@ DB_PASSWORD=root
 MAILPIT_WEB_PORT=8025
 ```
 
-Ver [configurações completas](05-configuracoes.md) para detalhes.
+Ver arquivo `.env.example` para todas as configurações disponíveis.
 
 ## Case Técnico
 
-Este projeto implementa o case técnico descrito em `GUIA_IMPLEMENTACAO.md`.
+Este projeto implementa o case técnico da Tecnofit descrito em `docs/01-desafio_tecnofit.md`.
 
-Requisitos principais:
-- Saque PIX via chave email
-- Notificação por email
-- Validações de saldo
-- Suporte a saques agendados (cron)
+Funcionalidades entregues:
+- Saque PIX imediato e agendado via chave email
+- Notificação por email após saque concluído
+- Validações de saldo (não permite negativo)
+- Processamento automático via cron (a cada 5 segundos)
+- Lock pessimista e atômico para concorrência
+- Testes de integração cobrindo todos os cenários
